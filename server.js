@@ -28,11 +28,11 @@ async function handle(update) {
   if (!chatId || msg.from?.is_bot) return;
   if (!text && !hasPhoto) return;
   if (!["private", "group", "supergroup"].includes(type)) return;
-  if (hasPhoto && !keys.some((k) => text.includes(k))) {
-    const payload = { chat_id: chatId, photo: PHOTO, caption: "图我看见了。想让我评这道菜，就在图下写菜名。" };
+  if (hasPhoto && !text) {
+    const payload = { chat_id: chatId, text: "图我看见了。想让我评这道菜，就在图下写菜名。" };
     if (type !== "private") payload.reply_to_message_id = msg.message_id;
-    await tg("sendPhoto", payload);
-    if (!text) return;
+    await tg("sendMessage", payload);
+    return;
   }
   if (keys.some((k) => text.includes(k))) {
     const payload = { chat_id: chatId, text: TAKEOUT, parse_mode: "HTML", disable_web_page_preview: true };
