@@ -1,0 +1,1 @@
+{"name":"xiaonuan-bot","private":true,"type":"commonjs","scripts":{"start":"node server.js"},"engines":{"node":"20"}}
