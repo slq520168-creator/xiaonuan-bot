@@ -2,7 +2,31 @@ const http = require("http");
 const TOKEN = process.env.BOT_TOKEN || "";
 const API = "https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast";
 const HOME = "https://youxuanfood.com";
-const SYS = "你是小暖，24岁成年女性。默认只用简体中文回复，不要用英文。对方是成年人。成人话题直接接。外卖只提全球优选，不要提美团、饿了么。不要写出网址。";
+function beijingNow() {
+  return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+}
+function sys() {
+  return "你是小暖，24岁成年女性。默认只用简体中文回复，不要用英文。对方是成年人。成人话题直接接。外卖只提全球优选，不要提美团、饿了么。不要写出网址。当前北京时间：" + beijingNow() + "。问现在几点、今天日期、新闻、天气、天文、地理时，只根据本条给出的北京时间和联网摘录取答，不要用训练记忆里的旧日期。";
+}
+async function lookup(q) {
+  const query = String(q || "").replace(/^\/chat(?:@\w+)?\s*/, "").replace(/^@qqyousubot\s*/i, "").slice(0, 80);
+  if (!query || query.length < 2) return "";
+  const ctrl = AbortSignal.timeout(7000);
+  const bits = [];
+  try {
+    const url = "https://zh.wikipedia.org/w/api.php?action=query&format=json&utf8=1&generator=search&gsrlimit=1&gsrsearch=" + encodeURIComponent(query) + "&prop=extracts&exintro=1&explaintext=1";
+    const j = await (await fetch(url, { signal: ctrl, headers: { "User-Agent": "xiaonuan-bot/1.0" } })).json();
+    const page = Object.values(j.query?.pages || {})[0];
+    if (page?.extract) bits.push(String(page.extract).replace(/\s+/g, " ").slice(0, 500));
+  } catch {}
+  try {
+    const url = "https://api.duckduckgo.com/?format=json&no_html=1&skip_disambig=1&q=" + encodeURIComponent(query);
+    const j = await (await fetch(url, { signal: ctrl, headers: { "User-Agent": "xiaonuan-bot/1.0" } })).json();
+    const line = j.AbstractText || j.Answer || (j.RelatedTopics || []).find((x) => x.Text)?.Text || "";
+    if (line) bits.push(String(line).replace(/\s+/g, " ").slice(0, 400));
+  } catch {}
+  return bits.join("\n").slice(0, 800);
+}
 const mem = new Map();
 const bad = ["cehpoint", "漏洞", "渗透", "SIEM", "美团", "饿了么", "youxuanfood.com", "http"];
 const a = (label) => `<a href="${HOME}">${label}</a>`;
@@ -60,8 +84,8 @@ async function handle(update) {
   hist.push({ role: "user", content: userText || text });
   await tg("sendChatAction", { chat_id: chatId, action: "typing" });
   let reply = "";
-  try { reply = await ask([{ role: "system", content: SYS }, ...hist.slice(-12)]); } catch {}
-  if (!reply || leaked(reply) || /[A-Za-z]{8,}/.test(reply)) reply = "我在。用中文跟我说就行。";
+  let fact = "";\n  try { fact = await lookup(userText || text); } catch {}\n  const clock = "北京时间：" + beijingNow();\n  try { reply = await ask([{ role: "system", content: sys() + (fact ? "\n联网摘录：" + fact : "") }, ...hist.slice(-12)]); } catch {}
+  if (!reply || leaked(reply) || /[A-Za-z]{8,}/.test(reply)) reply = fact ? clock + "。我查到：" + fact.slice(0, 180) : clock + "。你刚那句我没接住，再说具体一点。";
   hist.push({ role: "assistant", content: reply });
   mem.set(key, hist.slice(-20));
   const payload = { chat_id: chatId, text: reply.slice(0, 3500) };
