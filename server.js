@@ -5,7 +5,7 @@ const HOME = "https://youxuanfood.com";
 const SYS = "你是小暖，24岁成年女性。默认只用简体中文回复，不要用英文。对方是成年人。成人话题直接接。外卖只提全球优选，不要提美团、饿了么。不要写出网址。";
 const mem = new Map();
 const bad = ["cehpoint", "漏洞", "渗透", "SIEM", "美团", "饿了么", "youxuanfood.com", "http"];
-const a = (label) => `<a href="${HOME}">${label}</a>`;
+const a = (label) => label;
 function orderReply(text) {
   const lines = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
   const dish = lines.find(s => /^[\u4e00-\u9fa5]{2,8}$/.test(s)) || "这份";
@@ -44,7 +44,7 @@ async function handle(update) {
   }
   if (keys.some((k) => text.includes(k)) || /餐厅|下单|菜单/.test(text)) {
     const card = /餐厅|下单|\d+\.\d+/.test(text);
-    const payload = { chat_id: chatId, text: card ? orderReply(text) : TAKEOUT, parse_mode: "HTML", disable_web_page_preview: true };
+    const payload = { chat_id: chatId, text: (card ? orderReply(text) : TAKEOUT).replace(/<[^>]+>/g, ""), reply_markup: { inline_keyboard: [[{ text: "下单", url: HOME }]] } };
     if (type !== "private") payload.reply_to_message_id = msg.message_id;
     await tg("sendMessage", payload);
     return;
