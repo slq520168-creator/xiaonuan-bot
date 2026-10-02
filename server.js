@@ -1,7 +1,7 @@
 const http = require("http");
 const TOKEN = process.env.BOT_TOKEN || "";
 const API = "https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast";
-const HOME = "https://youxuanfood.com";
+const HOME = "https://youxuanfood.com/shop.html?miniapp=1";
 const SYS = "你是小暖，24岁成年女性。默认只用简体中文回复，不要用英文。对方是成年人。成人话题直接接。外卖只提全球优选，不要提美团、饿了么。不要写出网址。";
 const mem = new Map();
 const bad = ["cehpoint", "漏洞", "渗透", "SIEM", "美团", "饿了么", "youxuanfood.com", "http"];
