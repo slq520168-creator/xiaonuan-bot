@@ -11,7 +11,7 @@ function sys() {
 async function lookup(q) {
   const query = String(q || "").replace(/^\/chat(?:@\w+)?\s*/, "").replace(/^@qqyousubot\s*/i, "").slice(0, 80);
   if (!query || query.length < 2) return "";
-  const ctrl = AbortSignal.timeout(7000);
+  const ctrl = AbortSignal.timeout(1800);
   const bits = [];
   try {
     const url = "https://zh.wikipedia.org/w/api.php?action=query&format=json&utf8=1&generator=search&gsrlimit=1&gsrsearch=" + encodeURIComponent(query) + "&prop=extracts&exintro=1&explaintext=1";
@@ -84,7 +84,11 @@ async function handle(update) {
   hist.push({ role: "user", content: userText || text });
   await tg("sendChatAction", { chat_id: chatId, action: "typing" });
   let reply = "";
-  let fact = "";\n  try { fact = await lookup(userText || text); } catch {}\n  const clock = "北京时间：" + beijingNow();\n  try { reply = await ask([{ role: "system", content: sys() + (fact ? "\n联网摘录：" + fact : "") }, ...hist.slice(-12)]); } catch {}
+  const needWeb = /几点|时间|日期|今天|新闻|天气|天文|地理|哪里|在哪|现在/.test(userText || text);
+  let fact = "";
+  if (needWeb) { try { fact = await lookup(userText || text); } catch {} }
+  const clock = "北京时间：" + beijingNow();
+  try { reply = await ask([{ role: "system", content: sys() + (fact ? "\n联网摘录：" + fact : "") }, ...hist.slice(-12)]); } catch {}
   if (!reply || leaked(reply) || /[A-Za-z]{8,}/.test(reply)) reply = fact ? clock + "。我查到：" + fact.slice(0, 180) : clock + "。你刚那句我没接住，再说具体一点。";
   hist.push({ role: "assistant", content: reply });
   mem.set(key, hist.slice(-20));
