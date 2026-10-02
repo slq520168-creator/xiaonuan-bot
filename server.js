@@ -27,6 +27,14 @@ async function lookup(q) {
   } catch {}
   return bits.join("\n").slice(0, 800);
 }
+
+async function weather(q) {
+  const city = (String(q).match(/(北京|上海|广州|深圳|成都|杭州|重庆|武汉|西安|南京|天津|苏州|金边|曼谷|东京|新加坡)/) || [])[1] || "北京";
+  const ctrl = AbortSignal.timeout(2500);
+  const url = "https://wttr.in/" + encodeURIComponent(city) + "?format=%l+%c+%t+%w+%h&lang=zh";
+  const text = await (await fetch(url, { signal: ctrl, headers: { "User-Agent": "curl/8.0" } })).text();
+  return city + "现在" + String(text || "").replace(/\s+/g, " ").trim().slice(0, 80);
+}
 const mem = new Map();
 const bad = ["cehpoint", "漏洞", "渗透", "SIEM", "美团", "饿了么", "youxuanfood.com", "http"];
 const a = (label) => `<a href="${HOME}">${label}</a>`;
@@ -84,11 +92,14 @@ async function handle(update) {
   hist.push({ role: "user", content: userText || text });
   await tg("sendChatAction", { chat_id: chatId, action: "typing" });
   let reply = "";
-  const needWeb = /几点|时间|日期|今天|新闻|天气|天文|地理|哪里|在哪|现在/.test(userText || text);
+  if (/天气/.test(userText || text)) {
+    try { reply = await weather(userText || text); } catch { reply = ""; }
+  }
+  const needWeb = !reply && /几点|时间|日期|今天|新闻|天文|地理|哪里|在哪|现在/.test(userText || text);
   let fact = "";
   if (needWeb) { try { fact = await lookup(userText || text); } catch {} }
   const clock = "北京时间：" + beijingNow();
-  try { reply = await ask([{ role: "system", content: sys() + (fact ? "\n联网摘录：" + fact : "") }, ...hist.slice(-12)]); } catch {}
+  if (!reply) { try { reply = await ask([{ role: "system", content: sys() + (fact ? "\n联网摘录：" + fact : "") }, ...hist.slice(-12)]); } catch {} }
   if (!reply || leaked(reply) || /[A-Za-z]{8,}/.test(reply)) reply = fact ? clock + "。我查到：" + fact.slice(0, 180) : clock + "。你刚那句我没接住，再说具体一点。";
   hist.push({ role: "assistant", content: reply });
   mem.set(key, hist.slice(-20));
