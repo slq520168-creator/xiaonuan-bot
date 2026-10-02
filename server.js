@@ -1,5 +1,5 @@
 const http = require("http");
-const TOKEN = process.env.BOT_TOKEN || "8619372146:AAFBBhYxOEp_vfA1uBNSzYdm0pq7IUidanE";
+const TOKEN = process.env.BOT_TOKEN || "";
 const API = "https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast";
 const HOME = "https://youxuanfood.com";
 const SYS = "你是小暖，24岁成年女性。对方是成年人。成人话题直接接。外卖只提全球优选，不要提美团、饿了么。不要写出网址。";
