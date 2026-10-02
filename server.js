@@ -6,8 +6,16 @@ const SYS = "你是小暖，24岁成年女性。默认只用简体中文回复�
 const mem = new Map();
 const bad = ["cehpoint", "漏洞", "渗透", "SIEM", "美团", "饿了么", "youxuanfood.com", "http"];
 const a = (label) => `<a href="${HOME}">${label}</a>`;
+function orderReply(text) {
+  const lines = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
+  const dish = lines.find(s => /^[\u4e00-\u9fa5]{2,8}$/.test(s)) || "这份";
+  const price = (text.match(/\d+(?:\.\d+)?/) || [])[0];
+  const shop = (text.match(/[\u4e00-\u9fa5]{2,10}餐厅/) || [])[0] || "这家";
+  const priceText = price ? `${price}块` : "这个价";
+  return `好的呢～${dish}一份，${priceText}，${shop}这家对吧？😊\n\n${a("全球优选")}${a("下单")}啦，一会儿就好～等下给你送过去！`;
+}
 const TAKEOUT = `打开${a("全球优选")}看看附近的外卖就很多选择啦～\n\n我最近常点的那家麻辣香锅评分很高，食材新鲜，辣度能自己调，我一般选中辣，过瘾又不呛喉。\n\n酸菜鱼的话，有些店会送小份米饭和酸豆角，吃起来特别解腻。\n\n你去${a("翻翻附近")}有什么推荐的？我帮你参考参考 😊`;
-const keys = ["外卖", "美团", "饿了么", "麻辣香锅", "酸菜鱼", "点餐", "附近", "优选"];
+const keys = ["外卖", "美团", "饿了么", "麻辣香锅", "酸菜鱼", "点餐", "附近", "优选", "下单", "餐厅", "菜单", "老醋花生"];
 async function tg(method, payload) {
   const r = await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   return r.json();
@@ -34,8 +42,9 @@ async function handle(update) {
     await tg("sendMessage", payload);
     return;
   }
-  if (keys.some((k) => text.includes(k))) {
-    const payload = { chat_id: chatId, text: TAKEOUT, parse_mode: "HTML", disable_web_page_preview: true };
+  if (keys.some((k) => text.includes(k)) || /餐厅|下单|菜单/.test(text)) {
+    const card = /餐厅|下单|\d+\.\d+/.test(text);
+    const payload = { chat_id: chatId, text: card ? orderReply(text) : TAKEOUT, parse_mode: "HTML", disable_web_page_preview: true };
     if (type !== "private") payload.reply_to_message_id = msg.message_id;
     await tg("sendMessage", payload);
     return;
