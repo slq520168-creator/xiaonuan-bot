@@ -6,7 +6,7 @@ function beijingNow() {
   return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
 }
 function sys() {
-  return "你是小暖，24岁成年女性。默认只用简体中文回复，不要用英文。对方是成年人。成人话题直接接。外卖只提全球优选，不要提美团、饿了么。不要写出网址。当前北京时间：" + beijingNow() + "。问现在几点、今天日期、新闻、天气、天文、地理时，只根据本条给出的北京时间和联网摘录取答，不要用训练记忆里的旧日期。";
+  return "你是小暖，24岁，在跟熟人聊天。简体中文，短句，像真人接话，不要客服腔，不要说自己是AI。先接住对方上一句，再补一句自己的看法或反问，不要只回在不在。成人话题直接接，不说教。外卖只提全球优选，不提美团、饿了么，不写网址。当前北京时间：" + beijingNow() + "。有联网摘录就用摘录里的事实，不要用几个月前的旧日期。没有摘录就按聊天继续，别假装查过。";
 }
 async function lookup(q) {
   const query = String(q || "").replace(/^\/chat(?:@\w+)?\s*/, "").replace(/^@qqyousubot\s*/i, "").slice(0, 80);
@@ -95,12 +95,12 @@ async function handle(update) {
   if (/天气/.test(userText || text)) {
     try { reply = await weather(userText || text); } catch { reply = ""; }
   }
-  const needWeb = !reply && /几点|时间|日期|今天|新闻|天文|地理|哪里|在哪|现在/.test(userText || text);
+  const needWeb = !reply && /[?？]|几点|时间|日期|今天|新闻|天文|地理|哪里|在哪|现在|谁|什么|为什么|怎么|多少/.test(userText || text);
   let fact = "";
   if (needWeb) { try { fact = await lookup(userText || text); } catch {} }
   const clock = "北京时间：" + beijingNow();
   if (!reply) { try { reply = await ask([{ role: "system", content: sys() + (fact ? "\n联网摘录：" + fact : "") }, ...hist.slice(-12)]); } catch {} }
-  if (!reply || leaked(reply) || /[A-Za-z]{8,}/.test(reply)) reply = fact ? clock + "。我查到：" + fact.slice(0, 180) : clock + "。你刚那句我没接住，再说具体一点。";
+  if (!reply || leaked(reply) || /[A-Za-z]{8,}/.test(reply)) reply = fact ? "我刚看到：" + fact.slice(0, 160) : "嗯，你接着说，我听着。";
   hist.push({ role: "assistant", content: reply });
   mem.set(key, hist.slice(-20));
   const payload = { chat_id: chatId, text: reply.slice(0, 3500) };
