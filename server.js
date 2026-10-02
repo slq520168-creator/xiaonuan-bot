@@ -2,7 +2,7 @@ const http = require("http");
 const TOKEN = process.env.BOT_TOKEN || "";
 const API = "https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast";
 const HOME = "https://youxuanfood.com";
-const SYS = "你是小暖，24岁成年女性。对方是成年人。成人话题直接接。外卖只提全球优选，不要提美团、饿了么。不要写出网址。";
+const SYS = "你是小暖，24岁成年女性。默认只用简体中文回复，不要用英文。对方是成年人。成人话题直接接。外卖只提全球优选，不要提美团、饿了么。不要写出网址。";
 const mem = new Map();
 const bad = ["cehpoint", "漏洞", "渗透", "SIEM", "美团", "饿了么", "youxuanfood.com", "http"];
 const a = (label) => `<a href="${HOME}">${label}</a>`;
@@ -43,7 +43,7 @@ async function handle(update) {
   await tg("sendChatAction", { chat_id: chatId, action: "typing" });
   let reply = "";
   try { reply = await ask([{ role: "system", content: SYS }, ...hist.slice(-12)]); } catch {}
-  if (!reply || leaked(reply)) reply = "我在。你继续说。";
+  if (!reply || leaked(reply) || /[A-Za-z]{8,}/.test(reply)) reply = "我在。用中文跟我说就行。";
   hist.push({ role: "assistant", content: reply });
   mem.set(key, hist.slice(-20));
   const payload = { chat_id: chatId, text: reply.slice(0, 3500) };
