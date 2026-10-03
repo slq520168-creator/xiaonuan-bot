@@ -107,8 +107,11 @@ async function handle(update) {
     await tg("sendMessage", payload);
     return;
   }
-  const key = String(chatId);
-  const hist = mem.get(key) || [];
+  const uid = msg.from?.id || "0";
+  const mentioned = /@qqyousubot/i.test(text) || /^\/chat/.test(text);
+  const repliedBot = Boolean(msg.reply_to_message?.from?.is_bot);
+  const key = String(chatId) + ":" + uid;
+  const hist = (type === "private" || mentioned || repliedBot) ? (mem.get(key) || []) : [];
   if (text === "/start") {
     await tg("sendMessage", { chat_id: chatId, text: "在呀。想吃就说外卖或菜名。" });
     mem.set(key, []);
@@ -129,7 +132,7 @@ async function handle(update) {
   if (!reply) {
     try {
       reply = await Promise.race([
-        ask([{ role: "system", content: sys(chatId) + (fact ? "\n联网摘录：" + fact : "") }, ...hist.slice(-12)]),
+        ask([{ role: "system", content: sys(chatId) + (fact ? "\n联网摘录：" + fact : "") }, ...hist.slice(-4)]),
         new Promise((resolve) => setTimeout(() => resolve(""), 8000))
       ]);
     } catch { reply = ""; }
@@ -137,7 +140,7 @@ async function handle(update) {
   if (/上映于|改编自|导演为/.test(reply)) reply = "";
   if (!reply) reply = "嗯，接着说呀🥺";
   hist.push({ role: "assistant", content: reply });
-  mem.set(key, hist.slice(-20));
+  mem.set(key, hist.slice(-6));
   const payload = { chat_id: chatId, text: nospace(reply).slice(0, 3000) };
   if (type !== "private") payload.reply_to_message_id = msg.message_id;
   const sent = await tg("sendMessage", payload);
