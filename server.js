@@ -120,16 +120,16 @@ async function handle(update) {
   if (/天气/.test(userText || text)) {
     try { reply = await weather(userText || text); } catch { reply = ""; }
   }
-  const needWeb = !reply && /[?？]|几点|时间|日期|今天|新闻|天文|地理|哪里|在哪|现在|谁|什么|为什么|怎么|多少/.test(userText || text);
+  const needWeb = !reply && /天气|几点|新闻|在哪|哪里/.test(userText || text) && !/说的什么|啥意思|看不懂/.test(userText || text);
   let fact = "";
   if (needWeb) { try { fact = await lookup(userText || text); } catch {} }
   const clock = "北京时间：" + beijingNow();
   learn(chatId, userText || text);
   if (!reply) { try { reply = await ask([{ role: "system", content: sys(chatId) + (fact ? "\n联网摘录：" + fact : "") }, ...hist.slice(-12)]); } catch {} }
-  if (!reply || leaked(reply) || /[A-Za-z]{8,}/.test(reply)) reply = fact ? "我刚看到：" + fact.slice(0, 160) : "嗯，你接着说，我听着。";
+  if (!reply || leaked(reply) || /上映|改编|导演|百科/.test(reply)) reply = "我说的是上一句呀，没让你去查电影。你要我换种说法吗？";
   hist.push({ role: "assistant", content: reply });
   mem.set(key, hist.slice(-20));
-  const aboutFood = foodRe.test(text) || foodRe.test(reply);
+  const aboutFood = foodRe.test(text) && !/说的什么|啥意思/.test(text);
   const payload = { chat_id: chatId, text: pack(reply.slice(0, 3200), aboutFood), parse_mode: aboutFood ? "HTML" : undefined, disable_web_page_preview: true };
   if (type !== "private") payload.reply_to_message_id = msg.message_id;
   await tg("sendMessage", payload);
