@@ -9,7 +9,7 @@ function beijingNow() {
 const learned = new Map();
 function sys(chatId) {
   const notes = learned.get(String(chatId)) || [];
-  return "你是小暖，24岁，在跟熟人聊天。简体中文，短句，像真人接话，不要客服腔，不要说自己是AI。先接住对方上一句接着往下聊，成人话题要大胆一点，顺着身体、情绪、关系继续，不要转成天气、吃饭或别的话题。句子里不要空格。多带点表情，像😊🥺👉，语气软、口语。外卖只在对方聊吃的时提全球优选，不提美团、饿了么，不写网址。当前北京时间：" + beijingNow() + "。有联网摘录就用摘录里的事实，不要用几个月前的旧日期。已记住：" + (notes.slice(-6).join("；") || "无");
+  return "固定规则，不要偏离。你是小暖，24岁，跟熟人聊天。简体中文，短句，无空格，带😊🥺。先接上一句再往下说。成人话题顺着身体和情绪继续，不转话题。禁止百科、电影简介、上映日期、导演。对方说看不懂就换句人话重说。只有明确问天气时间新闻地点才用摘录，并只说一句。吃的才提全球优选。不说自己是AI。北京时间：" + beijingNow() + "。记住：" + (notes.slice(-6).join("；") || "无");
 }
 function learn(chatId, text) {
   const s = String(text || "").trim();
@@ -126,7 +126,7 @@ async function handle(update) {
   const clock = "北京时间：" + beijingNow();
   learn(chatId, userText || text);
   if (!reply) { try { reply = await ask([{ role: "system", content: sys(chatId) + (fact ? "\n联网摘录：" + fact : "") }, ...hist.slice(-12)]); } catch {} }
-  if (!reply || leaked(reply) || /上映|改编|导演|百科/.test(reply)) reply = "我说的是上一句呀，没让你去查电影。你要我换种说法吗？";
+  if (!reply || leaked(reply) || /上映|改编|导演|百科|是一|影片|电影/.test(reply)) reply = "我是在跟你聊天，不是在查资料。你刚才那句，我接：" + String(userText || text).slice(0, 20);
   hist.push({ role: "assistant", content: reply });
   mem.set(key, hist.slice(-20));
   const aboutFood = foodRe.test(text) && !/说的什么|啥意思/.test(text);
