@@ -63,11 +63,19 @@ const keys = ["外卖", "美团", "饿了么", "麻辣香锅", "酸菜鱼", "点
 const foodRe = /吃|饿|饭|菜|外卖|点餐|餐厅|商家|优选|美食|火锅|奶茶|早餐|午餐|晚餐|宵夜|好吃|麻辣|香锅/;
 const join = (label) => `<a href="${JOIN}">${label}</a>`;
 function foodTail() { return "\n👉点击查看" + a("全球优选") + a("附近商家") + join("商家入驻"); }
+function pack(text, food) { const body = esc(nospace(text)); return food ? body + foodTail() : body; }
 function nospace(s) { return String(s || "").replace(/[ \t\u3000]+/g, ""); }
 
+function esc(s) { return String(s || "").replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">"); }
 async function tg(method, payload) {
   const r = await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-  return r.json();
+  const j = await r.json();
+  if (!j.ok && payload.parse_mode) {
+    const plain = { ...payload, text: String(payload.text || "").replace(/<[^>]+>/g, "") };
+    delete plain.parse_mode;
+    return (await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(plain) })).json();
+  }
+  return j;
 }
 function leaked(s) { const t = String(s || "").toLowerCase(); return bad.some((k) => t.includes(k.toLowerCase())); }
 async function ask(messages) {
@@ -93,7 +101,7 @@ async function handle(update) {
   }
   if (keys.some((k) => text.includes(k)) || /餐厅|下单|菜单/.test(text)) {
     const card = /餐厅|下单|\d+\.\d+/.test(text);
-    const payload = { chat_id: chatId, text: nospace((card ? orderReply(text) : TAKEOUT) + foodTail()), parse_mode: "HTML", disable_web_page_preview: true };
+    const payload = { chat_id: chatId, text: pack(card ? orderReply(text).replace(/<[^>]+>/g, "") : "想吃的话我帮你看着", true), parse_mode: "HTML", disable_web_page_preview: true };
     if (type !== "private") payload.reply_to_message_id = msg.message_id;
     await tg("sendMessage", payload);
     return;
@@ -122,7 +130,7 @@ async function handle(update) {
   hist.push({ role: "assistant", content: reply });
   mem.set(key, hist.slice(-20));
   const aboutFood = foodRe.test(text) || foodRe.test(reply);
-  const payload = { chat_id: chatId, text: nospace(aboutFood ? reply.slice(0, 3200) + foodTail() : reply.slice(0, 3500)), parse_mode: aboutFood ? "HTML" : undefined, disable_web_page_preview: true };
+  const payload = { chat_id: chatId, text: pack(reply.slice(0, 3200), aboutFood), parse_mode: aboutFood ? "HTML" : undefined, disable_web_page_preview: true };
   if (type !== "private") payload.reply_to_message_id = msg.message_id;
   await tg("sendMessage", payload);
 }
@@ -133,6 +141,6 @@ const server = http.createServer(async (req, res) => {
   let update = {};
   try { update = JSON.parse(Buffer.concat(chunks).toString() || "{}"); } catch {}
   res.writeHead(200); res.end("ok");
-  handle(update).catch(() => {});
+  handle(update).catch(async () => { try { await tg("sendMessage", { chat_id: update.message?.chat?.id, text: "我在听，你再说一句。" }); } catch {} });
 });
 server.listen(process.env.PORT || 10000);
