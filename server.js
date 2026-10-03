@@ -126,15 +126,22 @@ async function handle(update) {
   if (needWeb) { try { fact = await lookup(userText || text); } catch {} }
   const clock = "北京时间：" + beijingNow();
   learn(chatId, userText || text);
-  if (!reply) { try { reply = await ask([{ role: "system", content: sys(chatId) + (fact ? "\n联网摘录：" + fact : "") }, ...hist.slice(-12)]); } catch {} }
+  if (!reply) {
+    try {
+      reply = await Promise.race([
+        ask([{ role: "system", content: sys(chatId) + (fact ? "\n联网摘录：" + fact : "") }, ...hist.slice(-12)]),
+        new Promise((resolve) => setTimeout(() => resolve(""), 8000))
+      ]);
+    } catch { reply = ""; }
+  }
   if (/上映于|改编自|导演为/.test(reply)) reply = "";
-if (!reply) reply = "你说「" + String(userText || text).slice(0, 18) + "」，我在听，接着往下说呀🥺";
+  if (!reply) reply = "嗯，接着说呀🥺";
   hist.push({ role: "assistant", content: reply });
   mem.set(key, hist.slice(-20));
-  const aboutFood = foodRe.test(text) && !/说的什么|啥意思/.test(text);
-  const payload = { chat_id: chatId, text: pack(reply.slice(0, 3200), aboutFood), parse_mode: aboutFood ? "HTML" : undefined, disable_web_page_preview: true };
+  const payload = { chat_id: chatId, text: nospace(reply).slice(0, 3000) };
   if (type !== "private") payload.reply_to_message_id = msg.message_id;
-  await tg("sendMessage", payload);
+  const sent = await tg("sendMessage", payload);
+  if (!sent?.ok) await tg("sendMessage", { chat_id: chatId, text: nospace(reply).slice(0, 3000) });
 }
 const server = http.createServer(async (req, res) => {
   if (req.method === "GET") { res.writeHead(200); res.end("xiaonuan-render"); return; }
