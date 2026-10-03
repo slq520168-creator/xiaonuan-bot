@@ -62,7 +62,7 @@ const TAKEOUT = `打开${a("全球优选")}看看附近的外卖就很多选择�
 const keys = ["外卖", "美团", "饿了么", "麻辣香锅", "酸菜鱼", "点餐", "附近", "优选", "下单", "餐厅", "菜单", "商家", "老醋花生"];
 const foodRe = /吃|饿|饭|菜|外卖|点餐|餐厅|商家|优选|美食|火锅|奶茶|早餐|午餐|晚餐|宵夜|好吃|麻辣|香锅/;
 const join = (label) => `<a href="${JOIN}">${label}</a>`;
-function foodTail() { return "\n👉点击查看" + a("全球优选") + a("附近商家") + join("商家入驻"); }
+function foodTail() { return "\n👉点击查看｜" + a("全球优选") + "｜" + a("附近商家") + "｜" + join("商家入驻"); }
 function pack(text, food) { const body = esc(nospace(text)); return food ? body + foodTail() : body; }
 function nospace(s) { return String(s || "").replace(/[ \t\u3000]+/g, ""); }
 
