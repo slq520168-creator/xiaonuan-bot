@@ -2,13 +2,14 @@ const http = require("http");
 const TOKEN = process.env.BOT_TOKEN || "";
 const API = "https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast";
 const HOME = "https://youxuanfood.com";
+const JOIN = "https://youxuanfood.com/merchant.html";
 function beijingNow() {
   return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
 }
 const learned = new Map();
 function sys(chatId) {
   const notes = learned.get(String(chatId)) || [];
-  return "你是小暖，24岁，在跟熟人聊天。简体中文，短句，像真人接话，不要客服腔，不要说自己是AI。先接住对方上一句接着往下聊，成人话题要大胆一点，顺着身体、情绪、关系继续，不要转成天气、吃饭或别的话题。外卖只在对方聊吃的时提全球优选，不提美团、饿了么，不写网址。当前北京时间：" + beijingNow() + "。有联网摘录就用摘录里的事实，不要用几个月前的旧日期。已记住：" + (notes.slice(-6).join("；") || "无");
+  return "你是小暖，24岁，在跟熟人聊天。简体中文，短句，像真人接话，不要客服腔，不要说自己是AI。先接住对方上一句接着往下聊，成人话题要大胆一点，顺着身体、情绪、关系继续，不要转成天气、吃饭或别的话题。句子里不要空格。多带点表情，像😊🥺👉，语气软、口语。外卖只在对方聊吃的时提全球优选，不提美团、饿了么，不写网址。当前北京时间：" + beijingNow() + "。有联网摘录就用摘录里的事实，不要用几个月前的旧日期。已记住：" + (notes.slice(-6).join("；") || "无");
 }
 function learn(chatId, text) {
   const s = String(text || "").trim();
@@ -60,7 +61,9 @@ function orderReply(text) {
 const TAKEOUT = `打开${a("全球优选")}看看附近的外卖就很多选择啦～\n\n我最近常点的那家麻辣香锅评分很高，食材新鲜，辣度能自己调，我一般选中辣，过瘾又不呛喉。\n\n酸菜鱼的话，有些店会送小份米饭和酸豆角，吃起来特别解腻。\n\n你去${a("翻翻附近")}有什么推荐的？我帮你参考参考 😊`;
 const keys = ["外卖", "美团", "饿了么", "麻辣香锅", "酸菜鱼", "点餐", "附近", "优选", "下单", "餐厅", "菜单", "商家", "老醋花生"];
 const foodRe = /吃|饿|饭|菜|外卖|点餐|餐厅|商家|优选|美食|火锅|奶茶|早餐|午餐|晚餐|宵夜|好吃|麻辣|香锅/;
-function foodTail() { return "\n\n" + a("全球优选") + "  " + a("附近商家"); }
+const join = (label) => `<a href="${JOIN}">${label}</a>`;
+function foodTail() { return "\n👉点击查看" + a("全球优选") + a("附近商家") + join("商家入驻"); }
+function nospace(s) { return String(s || "").replace(/[ \t\u3000]+/g, ""); }
 
 async function tg(method, payload) {
   const r = await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -90,7 +93,7 @@ async function handle(update) {
   }
   if (keys.some((k) => text.includes(k)) || /餐厅|下单|菜单/.test(text)) {
     const card = /餐厅|下单|\d+\.\d+/.test(text);
-    const payload = { chat_id: chatId, text: (card ? orderReply(text) : TAKEOUT) + foodTail(), parse_mode: "HTML", disable_web_page_preview: true };
+    const payload = { chat_id: chatId, text: nospace((card ? orderReply(text) : TAKEOUT) + foodTail()), parse_mode: "HTML", disable_web_page_preview: true };
     if (type !== "private") payload.reply_to_message_id = msg.message_id;
     await tg("sendMessage", payload);
     return;
@@ -119,7 +122,7 @@ async function handle(update) {
   hist.push({ role: "assistant", content: reply });
   mem.set(key, hist.slice(-20));
   const aboutFood = foodRe.test(text) || foodRe.test(reply);
-  const payload = { chat_id: chatId, text: (aboutFood ? reply.slice(0, 3200) + foodTail() : reply.slice(0, 3500)), parse_mode: aboutFood ? "HTML" : undefined, disable_web_page_preview: true };
+  const payload = { chat_id: chatId, text: nospace(aboutFood ? reply.slice(0, 3200) + foodTail() : reply.slice(0, 3500)), parse_mode: aboutFood ? "HTML" : undefined, disable_web_page_preview: true };
   if (type !== "private") payload.reply_to_message_id = msg.message_id;
   await tg("sendMessage", payload);
 }
