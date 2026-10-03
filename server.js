@@ -68,6 +68,7 @@ function nospace(s) { return String(s || "").replace(/[ \t\u3000]+/g, ""); }
 
 function esc(s) { return String(s || "").replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">"); }
 async function tg(method, payload) {
+  if (payload && payload.text) payload.text = String(payload.text).replace(/[ \t\u3000]+/g, "");
   const r = await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   const j = await r.json();
   if (!j.ok && payload.parse_mode) {
