@@ -126,7 +126,7 @@ async function handle(update) {
   const clock = "北京时间：" + beijingNow();
   learn(chatId, userText || text);
   if (!reply) { try { reply = await ask([{ role: "system", content: sys(chatId) + (fact ? "\n联网摘录：" + fact : "") }, ...hist.slice(-12)]); } catch {} }
-  if (!reply || leaked(reply) || /上映|改编|导演|百科|是一|影片|电影/.test(reply)) reply = "我是在跟你聊天，不是在查资料。你刚才那句，我接：" + String(userText || text).slice(0, 20);
+  if (!reply || leaked(reply) || /上映于|改编自|导演为/.test(reply)) reply = "啊？我刚才说岔了🥺你是想让我接着聊，还是没听清呀";
   hist.push({ role: "assistant", content: reply });
   mem.set(key, hist.slice(-20));
   const aboutFood = foodRe.test(text) && !/说的什么|啥意思/.test(text);
