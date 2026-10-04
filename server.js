@@ -2,10 +2,10 @@ const http = require("http");
 
 const TOKEN = process.env.BOT_TOKEN || "";
 const MINI_BOT = "globalyouxuancanyinbot";
-const MINI_BASE = "https://t.me/" + MINI_BOT;
-const HOME = MINI_BASE + "?startapp=home&mode=fullscreen";
-const NEARBY = MINI_BASE + "?startapp=nearby&mode=fullscreen";
-const JOIN = MINI_BASE + "?startapp=merchant&mode=fullscreen";
+const MINI_APP = "https://t.me/" + MINI_BOT + "?startapp&mode=fullscreen";
+const HOME = MINI_APP;
+const NEARBY = MINI_APP;
+const JOIN = MINI_APP;
 const CHAT_PRIMARY = process.env.CHAT_API_PRIMARY || "https://im520-live-relay.onrender.com/role-chat";
 const CHAT_FALLBACK = process.env.CHAT_API_FALLBACK || "https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast";
 
