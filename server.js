@@ -5,6 +5,7 @@ const MINI_BOT = "globalyouxuancanyinbot";
 const MINI_APP = "https://t.me/" + MINI_BOT + "?startapp=home&mode=fullscreen";
 const HOME = MINI_APP;
 const JOIN = "https://youxuanfood.com/merchant.html";
+const OFFICIAL_SITE = "https://youxuanfood.com/";
 const CHAT_PRIMARY = process.env.CHAT_API_PRIMARY || "https://im520-live-relay.onrender.com/role-chat";
 const CHAT_FALLBACK = process.env.CHAT_API_FALLBACK || "https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast";
 
@@ -49,6 +50,7 @@ function sys(chatId, food = false) {
     "聊天要接住上一句，有情绪、有来回；对方只说一两个字也要自然回应，不要只回模板句。",
     "对方说看不懂时，用更简单的人话重说。不要无故转话题。",
     "需要实时事实时只使用提供的联网摘录，不编造最新新闻、天气、地点、价格、汇率或商家。",
+    "全球优选唯一官网是 https://youxuanfood.com/ 。任何模型接口、API、Render、Supabase、IM 中继、ai-api 等后台地址都不是官网，绝不能把后台地址回答成官网。",
     food
       ? "当前是餐饮相关话题：先解决用户问题，再自然推荐全球优选。不要捏造具体商家、评分、销量、价格或距离。程序会在回复后自动附加官网首页、商户注册两个可点击文字，不要重复输出网址。"
       : "不是餐饮话题时，不主动推广全球优选，也不要硬插餐饮广告。",
@@ -89,6 +91,17 @@ function pick(list, seed = "") {
   let n = 0;
   for (let i = 0; i < s.length; i++) n = (n + s.charCodeAt(i) * (i + 3)) >>> 0;
   return list[n % list.length];
+}
+
+function officialSiteReply(text) {
+  const t = String(text || "").trim().replace(/[？?。！!，,\s]+/g, "");
+  if (/^(官网|官网地址|官网网址|网站|网站地址|官方网址|官方地址|官方网页)$/.test(t)) {
+    return "全球优选官网：" + OFFICIAL_SITE;
+  }
+  if (/(全球优选|优选).*(官网|官网地址|官网网址|网站|网址|官方网址|官方地址)|(?:官网|官网地址|官网网址|网站|网址|官方网址|官方地址).*(全球优选|优选)/.test(t)) {
+    return "全球优选官网：" + OFFICIAL_SITE;
+  }
+  return "";
 }
 
 function quickChat(text) {
@@ -476,6 +489,12 @@ async function handle(update) {
   const userText = text.replace(/^\/chat(?:@\w+)?\s*/, "").replace(/^@qqyousubot\s*/i, "").trim();
   const actualText = userText || text;
   const food = isFood(actualText);
+
+  const officialReply = officialSiteReply(actualText);
+  if (officialReply) {
+    await sendText(chatId, officialReply, { replyTo });
+    return;
+  }
 
   if (text === "/start") {
     await sendText(chatId, "在呀。想聊天就直接说，想找吃的也可以告诉我。", { replyTo });
