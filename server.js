@@ -4,8 +4,7 @@ const TOKEN = process.env.BOT_TOKEN || "";
 const MINI_BOT = "globalyouxuancanyinbot";
 const MINI_APP = "https://t.me/" + MINI_BOT + "?startapp&mode=fullscreen";
 const HOME = MINI_APP;
-const NEARBY = MINI_APP;
-const JOIN = MINI_APP;
+const JOIN = "https://youxuanfood.com/merchant.html";
 const CHAT_PRIMARY = process.env.CHAT_API_PRIMARY || "https://im520-live-relay.onrender.com/role-chat";
 const CHAT_FALLBACK = process.env.CHAT_API_FALLBACK || "https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast";
 
@@ -51,7 +50,7 @@ function sys(chatId, food = false) {
     "对方说看不懂时，用更简单的人话重说。不要无故转话题。",
     "需要实时事实时只使用提供的联网摘录，不编造最新新闻、天气、地点、价格、汇率或商家。",
     food
-      ? "当前是餐饮相关话题：先解决用户问题，再自然推荐全球优选。不要捏造具体商家、评分、销量、价格或距离。程序会在回复后自动附加全球优选、附近商家、商家入驻三个可点击入口，不要重复输出网址。"
+      ? "当前是餐饮相关话题：先解决用户问题，再自然推荐全球优选。不要捏造具体商家、评分、销量、价格或距离。程序会在回复后自动附加官网首页、商户注册两个可点击文字，不要重复输出网址。"
       : "不是餐饮话题时，不主动推广全球优选，也不要硬插餐饮广告。",
     "北京时间：" + beijingNow() + "。",
     "记住：" + (notes.slice(-6).join("；") || "无"),
@@ -74,7 +73,7 @@ function cleanReply(s) {
 }
 
 function foodLinksHtml() {
-  return `\n\n👉 <a href="${HOME}">全球优选</a> ｜ <a href="${NEARBY}">附近商家</a> ｜ <a href="${JOIN}">商家入驻</a>`;
+  return `\n\n<a href="${HOME}">官网首页</a> ｜ <a href="${JOIN}">商户注册</a>`;
 }
 
 const FOOD_RE = /吃|饿|饭|菜|外卖|点餐|下单|餐厅|饭店|餐馆|美食|火锅|烧烤|奶茶|咖啡|早餐|午餐|晚餐|宵夜|夜宵|好吃|麻辣|香锅|酸菜鱼|披萨|汉堡|面条|米饭|甜品|饮料|饮品|菜单|菜品|食材|做法|烹饪|口味|附近.*(吃|餐|店)|商家.*(餐|外卖|食品)|餐饮/;
@@ -131,19 +130,19 @@ function quickChat(text) {
 function foodQuickReply(text) {
   const t = String(text || "");
   if (/全球优选.*(是什么|干嘛|做什么)|什么是全球优选/.test(t)) {
-    return "全球优选是餐饮点餐平台，可以看菜品、找附近商家、下单，也给餐饮商家提供入驻入口。";
+    return "全球优选是餐饮点餐平台，可以看菜品、查看商家并下单，也提供商户注册。";
   }
   if (JOIN_RE.test(t)) {
-    return "你是餐饮商家的话，直接点“商家入驻”进入正式入驻页面，按页面填写门店资料就可以。";
+    return "你是餐饮商家的话，直接点“商户注册”打开正式网页，按页面填写邮箱、验证码和门店资料就可以。";
   }
   if (/附近.*(商家|餐厅|饭店|美食|吃)|找.*附近|离我近/.test(t)) {
-    return "点“附近商家”打开全球优选首页，允许定位后会按你当前位置显示附近商家和菜品。";
+    return "点“官网首页”打开全球优选，小程序里可以查看商家和菜品。";
   }
   if (/菜单|菜品|点餐|下单|外卖/.test(t)) {
-    return "可以，点“全球优选”直接看菜品和商家；想看离你近的，就点“附近商家”。";
+    return "可以，点“官网首页”直接看菜品和商家。";
   }
   if (/吃什么|有什么好吃|饿了|好饿/.test(t)) {
-    return "先看附近最方便。你也可以告诉我想吃辣的、清淡的、面、饭、火锅还是甜的，我帮你缩小范围。";
+    return "你可以先点“官网首页”看看，也可以告诉我想吃辣的、清淡的、面、饭、火锅还是甜的，我帮你缩小范围。";
   }
   return "";
 }
