@@ -75,18 +75,6 @@ function foodLinksHtml() {
   return `\n\n👉 <a href="${HOME}">全球优选</a> ｜ <a href="${NEARBY}">附近商家</a> ｜ <a href="${JOIN}">商家入驻</a>`;
 }
 
-function foodKeyboard() {
-  return {
-    inline_keyboard: [
-      [
-        { text: "🌍 全球优选", url: HOME },
-        { text: "📍 附近商家", url: NEARBY },
-      ],
-      [{ text: "🏪 商家入驻", url: JOIN }],
-    ],
-  };
-}
-
 const FOOD_RE = /吃|饿|饭|菜|外卖|点餐|下单|餐厅|饭店|餐馆|美食|火锅|烧烤|奶茶|咖啡|早餐|午餐|晚餐|宵夜|夜宵|好吃|麻辣|香锅|酸菜鱼|披萨|汉堡|面条|米饭|甜品|饮料|饮品|菜单|菜品|食材|做法|烹饪|口味|附近.*(吃|餐|店)|商家.*(餐|外卖|食品)|餐饮/;
 const JOIN_RE = /(餐饮|餐厅|饭店|餐馆|奶茶|咖啡|外卖|小吃|烧烤|火锅).*(入驻|开店|加盟|商家)|(?:入驻|开店|加盟).*(餐饮|餐厅|饭店|餐馆|外卖|奶茶|咖啡)/;
 const ORDER_RE = /点餐|下单|外卖|附近.*(?:吃|餐厅|饭店|美食)|找.*(?:餐厅|饭店|吃的)|有什么好吃|吃什么/;
@@ -452,7 +440,6 @@ async function sendText(chatId, text, { replyTo, food = false } = {}) {
     disable_web_page_preview: true,
   };
   if (replyTo) payload.reply_to_message_id = replyTo;
-  if (food) payload.reply_markup = foodKeyboard();
 
   const sent = await tg("sendMessage", payload);
   if (!sent?.ok) {
@@ -462,7 +449,6 @@ async function sendText(chatId, text, { replyTo, food = false } = {}) {
       disable_web_page_preview: true,
     };
     if (replyTo) fallback.reply_to_message_id = replyTo;
-    if (food) fallback.reply_markup = foodKeyboard();
     return tg("sendMessage", fallback);
   }
   return sent;
