@@ -1,9 +1,11 @@
 const http = require("http");
 
 const TOKEN = process.env.BOT_TOKEN || "";
-const HOME = "https://youxuanfood.com";
-const NEARBY = HOME;
-const JOIN = "https://youxuanfood.com/merchant.html";
+const MINI_BOT = "globalyouxuancanyinbot";
+const MINI_BASE = "https://t.me/" + MINI_BOT;
+const HOME = MINI_BASE + "?startapp=home&mode=fullscreen";
+const NEARBY = MINI_BASE + "?startapp=nearby&mode=fullscreen";
+const JOIN = MINI_BASE + "?startapp=merchant&mode=fullscreen";
 const CHAT_PRIMARY = process.env.CHAT_API_PRIMARY || "https://im520-live-relay.onrender.com/role-chat";
 const CHAT_FALLBACK = process.env.CHAT_API_FALLBACK || "https://afzcohtnljnmucrkgcaz.supabase.co/functions/v1/role-chat-fast";
 
