@@ -2,7 +2,7 @@ const http = require("http");
 
 const TOKEN = process.env.BOT_TOKEN || "";
 const MINI_BOT = "globalyouxuancanyinbot";
-const MINI_APP = "https://t.me/" + MINI_BOT + "?startapp&mode=fullscreen";
+const MINI_APP = "https://t.me/" + MINI_BOT + "?startapp=home&mode=fullscreen";
 const HOME = MINI_APP;
 const JOIN = "https://youxuanfood.com/merchant.html";
 const CHAT_PRIMARY = process.env.CHAT_API_PRIMARY || "https://im520-live-relay.onrender.com/role-chat";
