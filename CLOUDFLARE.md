@@ -1,13 +1,15 @@
 # Cloudflare migration
 
-Only main is used. Render is retained as backup. No custom domain or DNS route is included in these configurations. Worker observability is disabled.
+Only `main` is used. Render is retained as backup. No custom domain or DNS route is required. Worker observability is disabled.
 
-Install using `npm ci`, inspect the bundle using `npm run cf:check`, then deploy using `npm run cf:deploy`. Validate the returned workers.dev URL before adding any domain. Build output and local state are ignored by Git.
+Deploy with `npm run cf:deploy`. Validate the returned `workers.dev` root URL first. The root route returns service status instead of 404, and `/health` is also available.
 
-The Node and Worker entrypoints share bot.cjs. Reply logic, food links and current model defaults are retained. The Worker accepts only /webhook with Telegram secret-token validation. A SQLite-backed object per chat serializes updates, stores memory and suppresses already completed update IDs.
+The Node and Worker entrypoints share `bot.cjs`. Reply logic, food links and current model defaults are retained. The Worker accepts Telegram updates only on `/webhook`. A SQLite-backed Durable Object per chat serializes updates, stores memory and suppresses already completed update IDs.
 
-Required Secrets: BOT_TOKEN and WEBHOOK_SECRET. Optional settings: CHAT_API_PRIMARY, CHAT_API_FALLBACK. Do not rotate or publish the existing bot token. Add Secrets only through the Worker secret store.
+Required Secret: `BOT_TOKEN` only. `WEBHOOK_SECRET` is optional; if omitted, the Worker derives a SHA-256 webhook secret internally from `BOT_TOKEN` and never exposes it. `CHAT_API_PRIMARY` is fixed in `wrangler.jsonc` to `https://youxuansi.online/role-chat`. `CHAT_API_FALLBACK` remains optional.
 
-`npm run cf:test` uses mock Telegram/model services and tests memory restoration across runtime restarts. It sends no real messages.
+After `BOT_TOKEN` is stored as a Worker Secret, open `/setup` once. The Worker calls Telegram `setWebhook` itself and points Telegram to its own `/webhook` endpoint using the derived/explicit webhook secret. No manual Telegram webhook API call is needed.
 
-Verify workers.dev health and Secrets before updating Telegram setWebhook to https://<verified-worker-host>/webhook with the same secret_token. Do not delete the Render service. Migration is incomplete until getWebhookInfo points to the verified Worker and an authorized real bot exchange succeeds.
+`npm run cf:test` uses mock Telegram/model services and sends no real messages.
+
+Do not delete the Render service until the Cloudflare root URL reports `configured: true`, `/setup` returns `telegram: configured`, and one real authorized bot exchange succeeds.
