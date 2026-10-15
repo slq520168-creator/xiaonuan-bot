@@ -1,3 +1,4 @@
+import { DurableObject } from 'cloudflare:workers';
 import {createBot} from '../bot.cjs';
 function json(body,status=200){return Response.json(body,{status,headers:{'Cache-Control':'no-store'}})}
 async function webhookSecret(env){
@@ -20,12 +21,15 @@ async function setupTelegram(request,env){
   return json({ok:true,service:'xiaonuan-bot',webhook,telegram:'configured'});
  }catch{return json({ok:false,service:'xiaonuan-bot',webhook,error:'Telegram webhook setup failed'},502)}
 }
-export class BotChat {
- constructor(ctx,env){this.ctx=ctx;this.env=env;this.ready=ctx.blockConcurrencyWhile(async()=>{
-  const stored=await ctx.storage.list({prefix:'state:'}),mem=new Map(),learned=new Map();
-  for(const [key,value]of stored){if(key.startsWith('state:mem:'))mem.set(key.slice(10),value);else if(key.startsWith('state:learned:'))learned.set(key.slice(14),value)}
-  this.bot=createBot(env,{mem,learned});
- })}
+export class BotChat extends DurableObject {
+ constructor(ctx,env){
+  super(ctx,env);
+  this.ready=ctx.blockConcurrencyWhile(async()=>{
+   const stored=await ctx.storage.list({prefix:'state:'}),mem=new Map(),learned=new Map();
+   for(const [key,value]of stored){if(key.startsWith('state:mem:'))mem.set(key.slice(10),value);else if(key.startsWith('state:learned:'))learned.set(key.slice(14),value)}
+   this.bot=createBot(env,{mem,learned});
+  });
+ }
  async fetch(request){
   return this.ctx.blockConcurrencyWhile(async()=>{
    await this.ready;const update=await request.json(),id=String(update.update_id??'');
