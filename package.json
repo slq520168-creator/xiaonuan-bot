@@ -1,1 +1,17 @@
-{"name":"xiaonuan-bot","private":true,"type":"commonjs","scripts":{"start":"node server.js"},"engines":{"node":"20"}}
+{
+  "name": "xiaonuan-bot",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "cf:check": "wrangler deploy --dry-run",
+    "cf:deploy": "wrangler deploy",
+    "cf:test": "wrangler deploy --dry-run --outdir .wrangler/dry-run && node scripts/test-cloudflare.cjs"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "devDependencies": {
+    "wrangler": "4.151.0"
+  }
+}
