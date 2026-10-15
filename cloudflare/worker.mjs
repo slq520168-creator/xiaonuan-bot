@@ -8,18 +8,45 @@ async function webhookSecret(env){
  const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',bytes));
  return Array.from(digest,b=>b.toString(16).padStart(2,'0')).join('');
 }
-async function setupTelegram(request,env){
- if(!env.BOT_TOKEN)return json({ok:false,error:'BOT_TOKEN not configured'},503);
- const secret=await webhookSecret(env),webhook=new URL('/webhook',request.url).href;
+async function telegram(env,method,payload){
+ if(!env.BOT_TOKEN)throw new Error('BOT_TOKEN not configured');
+ const response=await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`,{
+  method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload||{})
+ });
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok||!data?.ok)throw new Error(`telegram_${method}_failed`);
+ return data;
+}
+async function ensureTelegram(request,env,{force=false}={}){
+ if(!env.BOT_TOKEN)return {ok:false,configured:false,error:'BOT_TOKEN not configured'};
+ const webhook=new URL('/webhook',request.url).href;
  try{
-  const response=await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/setWebhook`,{
-   method:'POST',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({url:webhook,secret_token:secret,drop_pending_updates:false,allowed_updates:['message','edited_message']})
-  });
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok||!data?.ok)return json({ok:false,service:'xiaonuan-bot',webhook,error:'Telegram webhook setup failed'},502);
-  return json({ok:true,service:'xiaonuan-bot',webhook,telegram:'configured'});
- }catch{return json({ok:false,service:'xiaonuan-bot',webhook,error:'Telegram webhook setup failed'},502)}
+  let current='';
+  try{
+   const info=await telegram(env,'getWebhookInfo',{});
+   current=String(info?.result?.url||'');
+  }catch{}
+  if(force||current!==webhook){
+   const secret=await webhookSecret(env);
+   await telegram(env,'setWebhook',{url:webhook,secret_token:secret,drop_pending_updates:false,allowed_updates:['message','edited_message']});
+  }
+  const info=await telegram(env,'getWebhookInfo',{});
+  const result=info?.result||{};
+  return {
+   ok:String(result.url||'')===webhook,
+   configured:true,
+   webhook,
+   telegramUrl:String(result.url||''),
+   pending:Number(result.pending_update_count||0),
+   lastError:String(result.last_error_message||'')
+  };
+ }catch{
+  return {ok:false,configured:true,webhook,error:'Telegram webhook setup failed'};
+ }
+}
+async function setupTelegram(request,env){
+ const status=await ensureTelegram(request,env,{force:true});
+ return json({service:'xiaonuan-bot',telegram:status.ok?'configured':'error',...status},status.ok?200:503);
 }
 export class BotChat extends DurableObject {
  constructor(ctx,env){
@@ -50,9 +77,14 @@ export default {
   const path=new URL(request.url).pathname;
   if(path==='/'&&['GET','HEAD'].includes(request.method)){
    if(request.method==='HEAD')return new Response(null,{status:200,headers:{'Cache-Control':'no-store'}});
-   return json({ok:true,service:'xiaonuan-bot',runtime:'cloudflare-worker',configured:Boolean(env.BOT_TOKEN),setup:env.BOT_TOKEN?'/setup':null});
+   const telegramStatus=await ensureTelegram(request,env);
+   return json({ok:true,service:'xiaonuan-bot',runtime:'cloudflare-worker',configured:Boolean(env.BOT_TOKEN),telegram:telegramStatus});
   }
-  if(path==='/health'&&['GET','HEAD'].includes(request.method))return request.method==='HEAD'?new Response(null):json({ok:true,service:'xiaonuan-bot',configured:Boolean(env.BOT_TOKEN)});
+  if(path==='/health'&&['GET','HEAD'].includes(request.method)){
+   if(request.method==='HEAD')return new Response(null,{status:200,headers:{'Cache-Control':'no-store'}});
+   const telegramStatus=await ensureTelegram(request,env);
+   return json({ok:true,service:'xiaonuan-bot',configured:Boolean(env.BOT_TOKEN),telegram:telegramStatus});
+  }
   if(path==='/setup'&&request.method==='GET')return setupTelegram(request,env);
   if(path!=='/webhook')return json({error:'Not found'},404);
   if(request.method!=='POST')return json({error:'Method not allowed'},405);
