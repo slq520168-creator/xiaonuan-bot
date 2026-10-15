@@ -4,7 +4,13 @@
   "compatibility_date": "2026-10-01",
   "workers_dev": true,
   "vars": {
-    "CHAT_API_PRIMARY": "https://youxuansi.online/role-chat"
+    "CHAT_API_PRIMARY": "https://youxuansi.online/role-chat",
+    "PUBLIC_BASE_URL": "https://xiaonuan-bot.slq520168.workers.dev"
+  },
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
   },
   "durable_objects": {
     "bindings": [

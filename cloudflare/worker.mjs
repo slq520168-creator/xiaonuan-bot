@@ -1,6 +1,12 @@
 import { DurableObject } from 'cloudflare:workers';
 import {createBot} from '../bot.cjs';
 function json(body,status=200){return Response.json(body,{status,headers:{'Cache-Control':'no-store'}})}
+function baseUrl(env,request){
+ const configured=String(env.PUBLIC_BASE_URL||'').trim();
+ if(configured)return configured.replace(/\/+$/,'');
+ if(request?.url)return new URL(request.url).origin;
+ return 'https://xiaonuan-bot.slq520168.workers.dev';
+}
 async function webhookSecret(env){
  if(env.WEBHOOK_SECRET)return String(env.WEBHOOK_SECRET);
  if(!env.BOT_TOKEN)return '';
@@ -19,26 +25,27 @@ async function telegram(env,method,payload){
 }
 async function ensureTelegram(request,env,{force=false}={}){
  if(!env.BOT_TOKEN)return {ok:false,configured:false,error:'BOT_TOKEN not configured'};
- const webhook=new URL('/webhook',request.url).href;
+ const webhook=baseUrl(env,request)+'/webhook';
  try{
-  let current='';
-  try{
-   const info=await telegram(env,'getWebhookInfo',{});
-   current=String(info?.result?.url||'');
-  }catch{}
+  const [infoBefore,me]=await Promise.all([
+   telegram(env,'getWebhookInfo',{}).catch(()=>({result:{}})),
+   telegram(env,'getMe',{}).catch(()=>({result:{}}))
+  ]);
+  const current=String(infoBefore?.result?.url||'');
   if(force||current!==webhook){
    const secret=await webhookSecret(env);
    await telegram(env,'setWebhook',{url:webhook,secret_token:secret,drop_pending_updates:false,allowed_updates:['message','edited_message']});
   }
   const info=await telegram(env,'getWebhookInfo',{});
-  const result=info?.result||{};
+  const result=info?.result||{},bot=me?.result||{};
   return {
    ok:String(result.url||'')===webhook,
    configured:true,
    webhook,
    telegramUrl:String(result.url||''),
    pending:Number(result.pending_update_count||0),
-   lastError:String(result.last_error_message||'')
+   lastError:String(result.last_error_message||''),
+   bot:{username:String(bot.username||''),canJoinGroups:bot.can_join_groups!==false,canReadAllGroupMessages:Boolean(bot.can_read_all_group_messages)}
   };
  }catch{
   return {ok:false,configured:true,webhook,error:'Telegram webhook setup failed'};
@@ -58,18 +65,19 @@ export class BotChat extends DurableObject {
   });
  }
  async fetch(request){
-  return this.ctx.blockConcurrencyWhile(async()=>{
-   await this.ready;const update=await request.json(),id=String(update.update_id??'');
-   if(id&&await this.ctx.storage.get('done:'+id))return json({ok:true,duplicate:true});
-   await this.bot.handle(update);
-   const before=await this.ctx.storage.list({prefix:'state:'}),next=new Map();
-   for(const [key,value]of this.bot.mem)next.set('state:mem:'+key,value);
-   for(const [key,value]of this.bot.learned)next.set('state:learned:'+key,value);
-   for(const [key,value]of next)if(JSON.stringify(before.get(key))!==JSON.stringify(value))await this.ctx.storage.put(key,value);
-   for(const key of before.keys())if(!next.has(key))await this.ctx.storage.delete(key);
-   if(id){await this.ctx.storage.put('done:'+id,Date.now());const done=await this.ctx.storage.list({prefix:'done:'});for(const [key,time]of done)if(Date.now()-time>86400000)await this.ctx.storage.delete(key)}
-   return json({ok:true});
-  });
+  await this.ready;
+  let update;
+  try{update=await request.json()}catch{return json({error:'Invalid JSON'},400)}
+  const id=String(update.update_id??'');
+  if(id&&await this.ctx.storage.get('done:'+id))return json({ok:true,duplicate:true});
+  await this.bot.handle(update);
+  const before=await this.ctx.storage.list({prefix:'state:'}),next=new Map();
+  for(const [key,value]of this.bot.mem)next.set('state:mem:'+key,value);
+  for(const [key,value]of this.bot.learned)next.set('state:learned:'+key,value);
+  for(const [key,value]of next)if(JSON.stringify(before.get(key))!==JSON.stringify(value))await this.ctx.storage.put(key,value);
+  for(const key of before.keys())if(!next.has(key))await this.ctx.storage.delete(key);
+  if(id){await this.ctx.storage.put('done:'+id,Date.now());const done=await this.ctx.storage.list({prefix:'done:'});for(const [key,time]of done)if(Date.now()-time>86400000)await this.ctx.storage.delete(key)}
+  return json({ok:true});
  }
 }
 export default {
@@ -91,11 +99,16 @@ export default {
   if(!env.BOT_TOKEN)return json({error:'Service not configured'},503);
   const secret=await webhookSecret(env);
   if(request.headers.get('X-Telegram-Bot-Api-Secret-Token')!==secret)return json({error:'Unauthorized'},401);
-  let bytes=0,chunks=[];for await(const chunk of(request.body||[])){bytes+=chunk.length;if(bytes>65536)return json({error:'Request too large'},413);chunks.push(chunk)}
-  let update;try{const data=new Uint8Array(bytes);let offset=0;for(const chunk of chunks){data.set(chunk,offset);offset+=chunk.byteLength}update=JSON.parse(new TextDecoder().decode(data))}catch{return json({error:'Invalid JSON'},400)}
+  let raw='';
+  try{raw=await request.text()}catch{return json({error:'Invalid body'},400)}
+  if(new TextEncoder().encode(raw).byteLength>65536)return json({error:'Request too large'},413);
+  let update;try{update=JSON.parse(raw)}catch{return json({error:'Invalid JSON'},400)}
   const chatId=update?.message?.chat?.id??update?.edited_message?.chat?.id;
   if(!chatId)return json({ok:true,ignored:true});
   const internal=new Request('https://bot.internal/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(update)});
   return env.CHATS.get(env.CHATS.idFromName(String(chatId))).fetch(internal);
+ },
+ async scheduled(event,env,ctx){
+  ctx.waitUntil(ensureTelegram(null,env).catch(()=>null));
  }
 };
