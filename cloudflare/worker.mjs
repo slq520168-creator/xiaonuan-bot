@@ -11,7 +11,6 @@ export class BotChat {
    await this.ready;const update=await request.json(),id=String(update.update_id??'');
    if(id&&await this.ctx.storage.get('done:'+id))return json({ok:true,duplicate:true});
    await this.bot.handle(update);
-   // Each history is stored separately, avoiding one growing snapshot value.
    const before=await this.ctx.storage.list({prefix:'state:'}),next=new Map();
    for(const [key,value]of this.bot.mem)next.set('state:mem:'+key,value);
    for(const [key,value]of this.bot.learned)next.set('state:learned:'+key,value);
@@ -25,6 +24,10 @@ export class BotChat {
 export default {
  async fetch(request,env,ctx){
   const path=new URL(request.url).pathname;
+  if(path==='/'&&['GET','HEAD'].includes(request.method)){
+   if(request.method==='HEAD')return new Response(null,{status:200,headers:{'Cache-Control':'no-store'}});
+   return json({ok:true,service:'xiaonuan-bot',runtime:'cloudflare-worker',configured:Boolean(env.BOT_TOKEN&&env.WEBHOOK_SECRET)});
+  }
   if(path==='/health'&&['GET','HEAD'].includes(request.method))return request.method==='HEAD'?new Response(null):json({ok:true,service:'xiaonuan-bot',configured:Boolean(env.BOT_TOKEN&&env.WEBHOOK_SECRET)});
   if(path!=='/webhook')return json({error:'Not found'},404);
   if(request.method!=='POST')return json({error:'Method not allowed'},405);
@@ -35,8 +38,6 @@ export default {
   const chatId=update?.message?.chat?.id??update?.edited_message?.chat?.id;
   if(!chatId)return json({ok:true,ignored:true});
   const internal=new Request('https://bot.internal/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(update)});
-  // Do not acknowledge a Telegram update until its durable processor succeeds.
   return env.CHATS.get(env.CHATS.idFromName(String(chatId))).fetch(internal);
  }
 };
-
